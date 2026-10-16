@@ -1,0 +1,12 @@
+# 检查模式：KICK（踢出）或 WARN（仅警告）
+mode: KICK
+
+# 是否启用 LuckPerms 节点豁免
+# 拥有权限 modchecker.bypass 的玩家将跳过检查
+luckperms-bypass: true
+
+# 踢出提示消息
+kick-message: "&c你使用了违规模组：%mods%"
+
+# 警告消息
+warn-message: "&e检测到违规模组：%mods%"
