@@ -36,7 +36,7 @@ public class ModChecker extends JavaPlugin {
         }
 
         // 注册监听器
-        getServer().getPluginManager().registerEvents(new ModListListener(this), this);
+        new ModListListener(this);
 
         getLogger().info("ModChecker 已启用，作者：YunLv");
     }
