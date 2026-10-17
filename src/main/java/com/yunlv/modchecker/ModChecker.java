@@ -44,22 +44,26 @@ public class ModChecker extends JavaPlugin {
             getLogger().warning("未找到 LuckPerms，权限节点豁免将不可用。");
         }
 
-        // 初始化 PacketEvents（已自包含在 JAR 中）
+        // 初始化 PacketEvents（由服务器插件提供）
         boolean packetActive = false;
         if (packetDetectionEnabled) {
-            try {
-                PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
-                PacketEvents.getAPI().load();
-                PacketEvents.getAPI().init();
+            if (Bukkit.getPluginManager().getPlugin("PacketEvents") != null) {
+                try {
+                    PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+                    PacketEvents.getAPI().load();
+                    PacketEvents.getAPI().init();
 
-                packetListener = new PacketListener(this);
-                PacketEvents.getAPI().getEventManager().registerListener(packetListener);
+                    packetListener = new PacketListener(this);
+                    PacketEvents.getAPI().getEventManager().registerListener(packetListener);
 
-                getLogger().info("PacketEvents 数据包检测已启用。");
-                packetActive = true;
-            } catch (Throwable t) {
-                getLogger().warning("PacketEvents 初始化失败：" + t.getMessage());
-                t.printStackTrace();
+                    getLogger().info("PacketEvents 数据包检测已启用。");
+                    packetActive = true;
+                } catch (Throwable t) {
+                    getLogger().warning("PacketEvents 初始化失败：" + t.getMessage());
+                    t.printStackTrace();
+                }
+            } else {
+                getLogger().warning("未找到 PacketEvents 插件，数据包检测不可用。");
             }
         }
 
