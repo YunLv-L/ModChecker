@@ -6,3 +6,10 @@ author: YunLv
 description: 解析客户端 Mod 列表并与黑名单对比，支持 LuckPerms 节点与数据包检测。
 depend: [LuckPerms]
 softdepend: [PacketEvents]
+commands:
+  modchecker:
+    description: ModChecker 主命令
+    usage: /modchecker <reload|check|list|add|remove|status>
+    aliases: [mc, mcheck]
+    permission: modchecker.command
+    permission-message: "&c你没有权限使用此命令。"

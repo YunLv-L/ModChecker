@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,22 +44,35 @@ public class ModChecker extends JavaPlugin {
             getLogger().warning("未找到 LuckPerms，权限节点豁免将不可用。");
         }
 
-        // 初始化 PacketEvents
-        if (packetDetectionEnabled && Bukkit.getPluginManager().getPlugin("PacketEvents") != null) {
-            PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
-            PacketEvents.getAPI().load();
-            PacketEvents.getAPI().init();
+        // 初始化 PacketEvents（已自包含在 JAR 中）
+        boolean packetActive = false;
+        if (packetDetectionEnabled) {
+            try {
+                PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+                PacketEvents.getAPI().load();
+                PacketEvents.getAPI().init();
 
-            packetListener = new PacketListener(this);
-            PacketEvents.getAPI().getEventManager().registerListener(packetListener);
+                packetListener = new PacketListener(this);
+                PacketEvents.getAPI().getEventManager().registerListener(packetListener);
 
-            getLogger().info("PacketEvents 数据包检测已启用。");
-        } else if (packetDetectionEnabled) {
-            getLogger().warning("未找到 PacketEvents，数据包检测不可用。");
+                getLogger().info("PacketEvents 数据包检测已启用。");
+                packetActive = true;
+            } catch (Throwable t) {
+                getLogger().warning("PacketEvents 初始化失败：" + t.getMessage());
+                t.printStackTrace();
+            }
         }
 
-        // 注册旧版通道监听器（作为回退方案）
-        new ModListListener(this);
+        // 仅在 PacketEvents 不可用时注册回退监听器
+        if (!packetActive) {
+            new ModListListener(this);
+            getLogger().info("已启用旧版通道监听器作为回退方案。");
+        }
+
+        // 注册命令
+        ModCheckerCommand commandExecutor = new ModCheckerCommand(this);
+        getCommand("modchecker").setExecutor(commandExecutor);
+        getCommand("modchecker").setTabCompleter(commandExecutor);
 
         getLogger().info("ModChecker 已启用，作者：YunLv");
     }
@@ -84,9 +98,6 @@ public class ModChecker extends JavaPlugin {
 
     /**
      * 检查玩家是否拥有指定权限节点
-     * @param player 玩家
-     * @param permission 权限节点
-     * @return 是否拥有权限
      */
     public boolean hasPermission(Player player, String permission) {
         if (!luckPermsEnabled || luckPerms == null) {
@@ -105,15 +116,11 @@ public class ModChecker extends JavaPlugin {
 
     /**
      * 根据玩家权限决定实际检测模式
-     * @param player 玩家
-     * @return KICK 或 WARN
      */
     public String getModeForPlayer(Player player) {
-        // 拥有完全绕过权限的玩家直接跳过
         if (hasPermission(player, "modchecker.bypass")) {
             return "BYPASS";
         }
-        // 拥有豁免踢出的玩家只警告
         if (hasPermission(player, "modchecker.exempt.kick")) {
             return "WARN";
         }
@@ -142,6 +149,60 @@ public class ModChecker extends JavaPlugin {
 
     public LuckPerms getLuckPerms() {
         return luckPerms;
+    }
+
+    /**
+     * 重载所有配置文件
+     */
+    public void reloadAllConfig() {
+        loadConfig();
+    }
+
+    /**
+     * 手动触发对指定玩家的检查请求
+     */
+    public void requestManualCheck(Player player) {
+        player.sendPluginMessage(this, "minecraft:brand", new byte[0]);
+        if (logToConsole) {
+            getLogger().info("[手动检查] 已向玩家 " + player.getName() + " 发送检查请求。");
+        }
+    }
+
+    /**
+     * 添加黑名单模组
+     */
+    public void addBlacklistedMod(String mod) {
+        blacklistedMods.add(mod.toLowerCase());
+        saveBlacklist();
+    }
+
+    /**
+     * 移除黑名单模组
+     */
+    public void removeBlacklistedMod(String mod) {
+        blacklistedMods.remove(mod.toLowerCase());
+        saveBlacklist();
+    }
+
+    /**
+     * 保存黑名单到文件
+     */
+    private void saveBlacklist() {
+        File blacklistFile = new File(getDataFolder(), "blacklist.yml");
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(blacklistFile);
+        config.set("mods", new ArrayList<>(blacklistedMods));
+        try {
+            config.save(blacklistFile);
+        } catch (Exception e) {
+            getLogger().warning("保存黑名单失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * PacketEvents 是否已激活
+     */
+    public boolean isPacketDetectionActive() {
+        return packetListener != null;
     }
 
     @Override
